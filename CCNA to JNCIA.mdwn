@@ -1,0 +1,701 @@
+# CCNA to JNCIA Study Guide <!-- omit in toc -->
+
+## Disclaimer <!-- omit in toc -->
+
+- Study material for this exam can be found [here](https://bit.ly/junipergenius).
+- This study guide is collection of relevant information that I have gathered while going through the Juniper provided study tools. It is in no way meant to serve as a replacement to their material. Instead it is too aide in being able to look up information quickly and effectively.
+
+## Table of Contents <!-- omit in toc -->
+
+- [Module 1: Junos Fundamentals](#module-1-junos-fundamentals)
+  - [Cert Prep: Migrating from Cisco CCNA to JNCIA-Junos](#cert-prep-migrating-from-cisco-ccna-to-jncia-junos)
+  - [History and Comparison: IOS and Junos](#history-and-comparison-ios-and-junos)
+    - [Cisco](#cisco)
+    - [Juniper Platform Architecture: RE and PFE](#juniper-platform-architecture-re-and-pfe)
+    - [Juniper Software Architecture](#juniper-software-architecture)
+    - [Junos System Daemons](#junos-system-daemons)
+      - [RPD Routing Protocol Daemon](#rpd-routing-protocol-daemon)
+      - [MGD - Management Daemon](#mgd---management-daemon)
+      - [DCD - Device Configuration Daemon](#dcd---device-configuration-daemon)
+      - [CHASSISD - Chassis Daemon](#chassisd---chassis-daemon)
+    - [PFE](#pfe)
+    - [Transit vs. Local Host Bound Traffic](#transit-vs-local-host-bound-traffic)
+    - [Exception Handling Traffic](#exception-handling-traffic)
+    - [Juniper Product Portfolio](#juniper-product-portfolio)
+- [Module 2: Junos User Interface](#module-2-junos-user-interface)
+  - [Junos User Interface Connection Methods](#junos-user-interface-connection-methods)
+  - [Initial Login](#initial-login)
+  - [CLI Modes](#cli-modes)
+  - [Candidate Config Files (Configure and Configure Private)](#candidate-config-files-configure-and-configure-private)
+  - [Committing Configurations](#committing-configurations)
+  - [CLI Help, Auto Complete, and Shortcuts](#cli-help-auto-complete-and-shortcuts)
+- [Module 3: Junos Basic Configuration](#module-3-junos-basic-configuration)
+  - [Factory Default Configuration](#factory-default-configuration)
+  - [Login and Initial Configuration](#login-and-initial-configuration)
+  - [Jun os User Configuration and Authentication](#jun-os-user-configuration-and-authentication)
+  - [Junos Interfaces and Terminology](#junos-interfaces-and-terminology)
+  - [Interfaces: Types and Naming](#interfaces-types-and-naming)
+    - [Types](#types)
+    - [Naming](#naming)
+    - [Logical Units](#logical-units)
+  - [Logging Configuration](#logging-configuration)
+- [Module 4: Junos Ops and Monitoring](#module-4-junos-ops-and-monitoring)
+  - [Monitoring System Software](#monitoring-system-software)
+  - [Monitoring System Hardware](#monitoring-system-hardware)
+  - [Monitoring System Components (Outside of Configuration Mode)](#monitoring-system-components-outside-of-configuration-mode)
+  - [Monitoring System Interfaces](#monitoring-system-interfaces)
+- [Module 5: Junos Routing and Policy and Firewall Filter](#module-5-junos-routing-and-policy-and-firewall-filter)
+  - [Junos Routing Overview](#junos-routing-overview)
+  - [Policy and Link State Protocols](#policy-and-link-state-protocols)
+  - [Routing and Policy Behavior and Actions](#routing-and-policy-behavior-and-actions)
+  - [Default Policy Actions](#default-policy-actions)
+  - [Matching Address Space: Route-Filters](#matching-address-space-route-filters)
+  - [Advanced Router-Filter Types](#advanced-router-filter-types)
+  - [Policy and Firewall Prefix Lists](#policy-and-firewall-prefix-lists)
+  - [Firewall Filter Overview](#firewall-filter-overview)
+- [Module 6: Junos Routing Fundamentals](#module-6-junos-routing-fundamentals)
+  - [Routing Protocol Preferences and Static Routes](#routing-protocol-preferences-and-static-routes)
+  - [Static Routing IOS vs Junos](#static-routing-ios-vs-junos)
+  - [Recursive Resolution of Static Next Hops](#recursive-resolution-of-static-next-hops)
+  - [Resources for Further Study](#resources-for-further-study)
+
+## Module 1: Junos Fundamentals
+
+### Cert Prep: Migrating from Cisco CCNA to JNCIA-Junos
+
+| CCNA            |                |
+| :-------------- | :------------- |
+| ↓               | ↓              |
+| User Interface  | Experience     |
+| Basic Config    | Net Fundaments |
+| Ops/monitor     | Protocols      |
+| Routing(config) | Theory         |
+| Policy / FF     | rfc's          |
+| ↓               | ↓              |
+| JNCIA           |                |
+
+### History and Comparison: IOS and Junos
+
+#### Cisco
+
+- IOS 25XX/36XX
+- " - XE (IOSD)
+- " - XR (CRS/etc)
+- NXOS (Nexus)
+
+#### Juniper Platform Architecture: RE and PFE
+
+| RE - Routing Engine |       |           |
+| :------------------ | :---- | :-------- |
+| MGD                 | RPB → | INET.0 RT |
+| DCD                 |       | ↓         |
+| CHASSISD            |       | FT        |
+| VRRPD/SNMPD         |       |           |
+| KERNEL              |       |           |
+| x86/FLASH/SSD/RAM   |       |           |
+
+↓
+
+| PFE - Packet Forwarding Engine |      |      |      |      |      |      |      |      |      |            |
+| :----------------------------- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--------- |
+| L2 Ethernet (Fxp1)             |      |      |      |      |      |      |      |      |      |            |
+|                                | ↓    |      | ↓    |      | ↓    |      | ↓    |      | ↓    |            |
+|                                | 0    |      | 1    |      | 2    |      | 3    |      | 4    |            |
+| SF                             | FT   | SF   | FT   | SF   | FT   | SF   | FT   | SF   | FT   | SF         |
+|                                |      |      |      |      |      |      | 0    |      | 0    | ← ge-4/3/0 |
+| FPC/MPC/DPC                    |      |      |      |      |      |      |      |      |      |            |
+
+- Above table represents a chassis
+- 0-4 represent line cards - Forwarding (Data) Plane
+  - `FT - Forwarding Traffic`
+  - `SF -Switch Fabric`
+
+#### Juniper Software Architecture
+
+Based on FreeBSD, so in the case of a daemon crash, the entire system doesn't reboot, unlike IOS of the late 90s.
+
+#### Junos System Daemons
+
+##### RPD Routing Protocol Daemon
+
+- Handles any of the routing protocol stuff, with its on scheduler.
+- Hands everything off to the RIB
+  - INET.0 is the default table for IPv4
+  - Passes information to the Forwarding Table (FIB)
+- the FIB accesses the Kernel to pass data down to the chassis switch, which passes info down to the line cards.
+- In the CLI FXP1 is the internal connectivity down from the RE to the Line cards.
+  - Higher end platforms have 2 of theses internal switches.
+
+##### MGD - Management Daemon
+
+- SSH
+- Telnet
+- CLI
+- Initial Login Requests
+- Show Commands
+
+##### DCD - Device Configuration Daemon
+
+- Responsible for configuring the interfaces/vlans/etc.
+- `show log dcd`
+
+##### CHASSISD - Chassis Daemon
+
+- Responsible for making the connection to the line across the L2 Ethernet switch.
+
+#### PFE
+
+- Line Card Acronyms
+  - FPC - Flexible Pic Concentrators
+    - Dates back to the original M-Series systems
+  - DPC - Dense Port Concentrators
+  - MPC
+
+#### Transit vs. Local Host Bound Traffic
+
+- All traffic will be compared with the local Forwarding traffic.
+
+#### Exception Handling Traffic
+
+- Line cards have built in processors to handle some of the exception traffic.
+- Line cards can send no route available responses instead of having to use the Routing Engine.
+- Firewall Filter = Cisco ACL
+  - If we configure lo0.0 with a Firewall Filter in the **input** direction, it's effectively applied to all traffic being passed up to the RE.
+
+#### Juniper Product Portfolio
+
+- Junos Routing Devices - Service Provider
+  - ACX Series
+    - Metro Ethernet Cores MEF
+    - LTE Deployments
+  - M Series
+    - Designed for MPLS use, only handles routing, no switching.
+  - MX Series
+    - MPLS, Edge termination
+    - Data center
+    - aggregation
+    - Switching
+  - PTX Series
+    - Core Offering
+  - T Series
+    - No Switching, only upgraded bandwidth from the M Series.
+- Junos Switching Devices - DC/Enterprise Side
+  - EX Series
+    - Switching
+    - Basic Routing
+    - Basic MPLS
+    - Typically used as top of rack devices for low end small form factor devices
+  - OCX Series
+    - Whitebox switch
+    - Open Compute Project
+  - QFX Sereis
+    - Low Latency, Switching
+- Junos Security Devices
+  - SRX Series
+    - Small Branch Series
+    - Firewall
+- Juniper SDN Projects
+  - Contrail
+    - Tungsten Fabric
+  - NFX2250 network Services Platform
+    - Effectively a Hypervisor combined with a Juniper Switching Chipset
+  - NorthStar Controller
+    - Managing traffic engineering
+  - IP/MPLSView
+    - Collect device telemetry data
+    - Model the network based off of real time information
+    - Allows us to plays games with the network for different failures over the course of the network
+  - Junos Running as a Virtual Device
+    - vSRX Virtual Firewall
+      - Advanced cloud security for branch SRX Series devices in a VM format
+      - A container version, the cSRX is also available
+    - Virtual MX
+      - Carrier-grade virtual routing for enterprise and service provider networks
+
+## Module 2: Junos User Interface
+
+### Junos User Interface Connection Methods
+
+- Serail conections
+  - Uses RS232 to RJ45
+  - Doesn't matter which port you use
+    - Con
+    - Aux
+  - Login
+    - root
+  - Password
+    - n/a
+  - Configure fxp0 (management ethernet port)
+    - Setup IP address
+    - SSH
+    - FTP/SCP
+      - SCP should be the preferred option
+    - telenet
+    - http(s)
+
+### Initial Login
+
+Logging in for the First Time
+
+- Nonroot users are placed into the CLI automatically
+  - Root user SSH login requires explicit config
+
+    - ```text
+      router  (ttyu0)← Serial console
+
+      login: user
+      Password:
+
+      user@router>
+      ```
+
+  - The root user must start the CLI from the shell
+    - Remember to exit the root steel after logging out of the CLI!
+
+    - ```text
+      router  (ttyu0)← Serial console
+
+      login: **‌root**
+      Password:
+
+      root@router% cli ← Shell Prompt
+      root@router> ← CLI Prompt
+      ```
+
+### CLI Modes
+
+- Junos
+  - SSH/Telnet
+    - user@Host> configure?
+      - **>** signifies that you are in operational mode
+      - Configure
+        - Creating a candidate configuration
+        - Choose to commit when your are ready
+        - Shared Candidate mode
+      - Configure private
+        - Best practice
+        - Each user has their own candidate file without effecting the current configuration
+      - Configure exclusive
+        - Create a candidate
+        - User has an exclusive lock on the config
+
+    - ```text
+      [edit]
+      user@host# edit interface ge-1/2/3
+
+      [edit interface ge-1/2/3]
+      user@host# set ...
+          "    # del ...
+          "    # top
+      ```
+
+    - **#** signifies that you are in configure mode
+
+### Candidate Config Files (Configure and Configure Private)
+
+- Differences (IOS vs Junos)
+  - Every change made in IOS, is active from the moment its run.
+  - Junos is a Batch configuration mode.
+    - When "configure" is type, a copy of the active config is copied over to a candidate configuration.
+    - As changes are made to the candidate config, no changes are made in production. When "commit" is typed, Junos checks the syntax to verify no issues are present, and then applies the changes to the active configuration as a whole.
+  - Configure mode
+    - When running configure mode, there is a possibility of multiple users editing the same candidate config file at the same time.
+    - Best case, the commit fails due to one of the changes made by the other person pushing configurations.
+    - Worst case, the commit passes and both users lose access to the box due to the partial completion of one to the simultaneous config changes.
+  - Configure Private (Best Practice)
+    - Each user will receive it's own candidate configuration.
+    - Multiple private configs can be made at the same time.
+    - No matter who commit first, it won't effect the other candidates.
+    - When another user is ready to commit, the system will handle the merge between their candidate config, and the other config that was committed prior to their config.
+    - Directly conflicting commits, whichever one was made last will take over.
+    - There is one downside to configure private, and that is that you can't commit unless you are at the top of the configuration tree.
+
+### Committing Configurations
+
+- Active Configuration (0) → `Configure Private` → Candidate Configuration
+  - Rollback file (1), (2), (...), (49)
+  - /config/
+    - 0-3 Config files stored here
+  - /var/config/
+    - 4-49 Config files stored here
+    - 49 is the default
+- When typing `rollback`, we can see when every config file was updated
+- Committing a config
+  - Candidate Configuration → commit → Active Configuration (0) → (1) → (2) → (...) → (49) → Bit Bucket
+- Rolling Back Configuration
+  - Enter Config Mode, type `rollback 1`, or whatever number config we want to rollback too.
+
+### CLI Help, Auto Complete, and Shortcuts
+
+- CLI Operational Mode
+  - Executive operational mode commands to monitor and control the operation of devices running the Junos OS
+    - Hierarchy of commands
+      - Example: `user@router> show ospf interface`
+      - `?` is your friend
+      - `TAB` to autocomplete.
+
+| Hierarchy of commands Example |       |        |               |               |          |          |
+| :---------------------------- | :---- | :----- | :------------ | :------------ | :------- | :------- |
+| Less Specific                 | clear | config | help          | monitor       | set      | **show** |
+| ↓                             |       | arp    | configuration | **ospf**      | version  |          |
+| More Specific                 |       |        | database      | **interface** | neighbor |          |
+
+- help (command)
+  - topic
+  - reference
+
+- Junos Shortcut Key
+
+| Key Combo | Action                               |
+| :-------- | :----------------------------------- |
+| Crtl+b    | Move cursor left (e.g bak)           |
+| Crtl+f    | Mover cursor right (e.g forward)     |
+| Crtl+p    | Recall previous command in history   |
+| Crtl+n    | Recall next command in history       |
+| Crtl+w    | Delete work before cursor            |
+| Crtl+k    | Delete work after cursor             |
+| Crtl+x    | Clear line                           |
+| Crtl+a    | Move cursor to the beginning of line |
+| Crtl+e    | Move cursor to end of line           |
+
+## Module 3: Junos Basic Configuration
+
+### Factory Default Configuration
+
+- Factory Defaults based on Series
+  - MX or M/T
+    - Nada! No configuration out of the box
+  - EX or QFX
+    - Default untagged VLAN
+    - RSTP
+    - IGMP Snooping
+  - SRF (Generic to Branch Office Specific)
+    - Devices has been divided into zones
+      - Policies
+        - Trust
+      - untagged VLAN
+      - DHCP Server
+      - Interface ge-0/0/0 belongs to the untrusted zone
+        - DHCP Client
+  - Common Config
+    - Syslog
+    - NO ROOT PW
+      - No config can be made until the password is configured
+    - NO Telenet/SSH
+
+### Login and Initial Configuration
+
+- `request system zeroize`
+  - Removes everything, no files will remain.
+- `load factory-defualt`
+  - Will have to add root password to commit this  
+
+### Jun os User Configuration and Authentication
+
+- System
+
+```text
+authentication-order [radius password];
+  radius-server 1.1.1.1 {
+    secret XXXXXX;
+  }
+```
+
+- System Login
+  
+```text
+user phill {
+  class NOC;
+  authentication {
+    encrypted-password XXXXXX;
+  }
+}
+class NOC {
+  permissions [ clear network ];
+  allow-commands "configure private";
+  deny-commands "ping";
+  allow-configuration "interfaces|firewalls";
+}
+```
+
+- Authentication types
+  - Local Password
+  - Radius
+  - Tacacs+
+
+### Junos Interfaces and Terminology
+
+- IFD Config Section
+  - IFD are the physical interfaces
+
+    - ```text
+      Interfaces {
+        ge-0/0/0 {
+          MTU 1581;
+      ```
+
+- IFL
+  - Logical Interface built on top of the IFD
+
+    - ```text
+          unit 100 {
+            family net {
+              ...
+            }
+          }
+          unit 200 {
+            ...
+          }
+      ```
+
+- IFF
+  - Interface Families
+
+`*IF = Interface`
+
+### Interfaces: Types and Naming
+
+#### Types
+
+- Managerment: me0, fpx0, vie
+- Internal: fxp1, fxp2, bme
+- Network:
+  - Ethernet: fe-, ge-, xe-, et-
+  - SONET: so-
+  - ATM: at-
+  - Services: pime, pimd, sp-, gre, etc
+- Loopback: Logical Interface ls0
+  - One unit per Routing-instance I.e:
+    - lo0.0 within inlet.0
+    - lo0.2 within VR2.inet.0
+    - Lo0.3 within VR3.inet.0
+
+#### Naming
+
+- Most interfaces are named according to:
+  - Intrerface media type (ge, so, at)
+  - Line card (FPC/MPC/DPC) slot
+  - Interface card (PIC) slot number
+  - Port number
+    - `ge-0/2/3` = port 3 of a Gigabit Ethernet PIC in slot 2 of FPC 0
+      - Note: Slot and port numbering begins with zero (0) rather than (1)
+- Non positional IF names exist
+  - lo0, Alan, ae, etc
+
+#### Logical Units
+
+- Subinterfaces NOT optional
+  - Junos always requires a unit ( unit 0 at least )
+  - Regardless of encapsulation
+- Unit numbers and circuit identifiers do not need to match
+- Support multiple protocol addresses
+  - Watch for multiple addresses when correcting mistakes!
+
+### Logging Configuration
+
+- Device Storage Medium
+  - Messages
+  - chassisd
+  - other-stuff
+  - /var/log
+- Syslog
+- Trace Options
+
+## Module 4: Junos Ops and Monitoring
+
+### Monitoring System Software
+
+- User **show system** commands focus on system software
+  - show system
+    - core-dumps
+    - alarms
+    - boot-messages
+    - license
+    - storage
+    - uptime
+    - process extensive
+
+### Monitoring System Hardware
+
+- User **show chassis** commands to monitor the chassis, focused on hardware:
+  - show chassis
+    - alarms
+    - environment
+    - hardware
+    - fpc
+    - cluster
+    - routing-engine
+
+### Monitoring System Components (Outside of Configuration Mode)
+
+- Use **Request** commands alter the state of chassis operation and components:
+  - request system
+    - halt
+    - power-off
+    - software add junos-package-name.tgz
+  - request chassis
+    - routing-engine master switch
+    - foc slow X restart
+  - request system configuration
+    - rescue save
+    - rescue delete
+  - From configuration mode
+    - rollback rescue
+
+### Monitoring System Interfaces
+
+- Use **show interfaces** commands to verify interface status and view interface details:
+  - Include options to increase or decrease displayed details
+  - Include interface name to limit output to that interface
+    - show interface
+      - terse
+      - extensive
+      - diagnostics options ge-0/0/0
+- Use **monitor interface *interface-name*** to view interface usage details in real time
+
+## Module 5: Junos Routing and Policy and Firewall Filter
+
+### Junos Routing Overview
+
+- Routing Policy
+  - Reads like natural language
+
+### Policy and Link State Protocols
+
+### Routing and Policy Behavior and Actions
+
+- Matching (FROM)
+  - router-filter 10/8 .....
+    - protocol [static OSPF]
+    - prefix-lists NAME
+    - atributes
+      - NH IP
+        - AREA
+        - Community
+    - Actions (THEN)
+      - accept
+  - reject
+  - next-policy
+  - modify
+  - preference
+  - NH IP
+  - AS-PATH
+
+### Default Policy Actions
+
+| Protocol | Import Policy | Export Policy |
+|:--|:--|:--|
+| BGP | Accept all *valid* BGP routes and import into `inet.0` | Accept and advertise all active BGP routes (*depends upon BGP NBR type*) |
+| OSPF | Accept all OSPF routes into `inet.0` *from LSDB SPF Calc* | Reject All (OSPF interface addresses advertised |
+| IS-IS | Accept all OSPF routes into `inet.0` *from LSDB SPF Calc* | Reject All (IS-IS interface addresses advertised) |
+| RIP | Accept all *valid* routes from explicitly configured nbr's into `inet.0` | Reject everything *Really, everything received!!* |
+
+- Example Policy Syntax
+  - Matching (from) criteria on same line, generally **OR'd**
+    - Exception to above, route-filters
+  - Generally from criteria on separate lines are **AND'd**
+
+### Matching Address Space: Route-Filters
+
+- Router-filter (or Prefix-list-filter) Match Types
+- Similar to Cisco prefix-list and ge and le operators
+- 192.168/16
+  - exact
+  - or longer (down to /32)
+  - longer (down to /32)
+  - upto
+  - prefix-length-range (/x-/y)
+
+### Advanced Router-Filter Types
+
+- Orlonger Type Example
+  - route-filter 192.168/16 or longer
+- Longer Type Example
+- route-filter 192.168/16 longer
+- UpTo Type Example
+  - route-filter 192.168/16 upto /18
+- Prefix-Length-Range Type Example
+  - route-filter 192.168/16 prefix-length-range /18-/19
+
+### Policy and Firewall Prefix Lists
+
+- Prefix Lists
+- Prefix lists contain a list of prefixes:
+  - prefix-list matches the prefix exactly
+  - prefix-list-filter allows prefix to match types
+
+### Firewall Filter Overview
+
+- Matching (from)
+  - Addresses
+  - Numeric ranges
+    - Bit field
+- Action (then)
+  - Terminating
+    - Accept, Reject, Discard
+    - Flow Control
+      - Next-term
+- Non-terminating
+- Syslog, log, count, policer, forwarding-class, loss-priority
+
+## Module 6: Junos Routing Fundamentals
+
+### Routing Protocol Preferences and Static Routes
+
+- Route Preference
+  - Ranks routes received from different sources
+    - Primary selection criteria and active route
+  - Used as a tiebreaker when the same destination prefix is available through multiple sources
+
+| Source of Route | Junos Pref | IOS AD |
+|:--|:--|:--|
+| Direct | 0 | 0 |
+| Local | 0 | 0 |
+| Static | 5 | 1 |
+| OSPF Int | 10 | 110 |
+| RIP | 100 | 120 |
+| OSPF Ext | 150 | 110 |
+| BGP | 170 | eBGP 170 / iBGP 200 |
+
+*More Preferred → Less Preferred
+
+### Static Routing IOS vs Junos
+
+- Metrics can be assigned to a static route in Junos.
+
+### Recursive Resolution of Static Next Hops
+
+- Resolve keyword needs to be present to
+
+### Resources for Further Study
+
+- Junos Genius
+  - Flexible Accessible:
+    - Android/IOS/MAC osx/Windows
+  - Online and Offline viewing of content
+    - Organize Contend with Favorites
+- Tiered Access
+  - Junos Genius - Basic
+  - Junos Genius - Plus
+  - Continuous New Content
+- Cert Practice Test!
+  - Wide Coverage of Product Portfolio
+- One Day Books
+- Learning Byte Videos
+- On Demand Training
+- Hardware Deployment Guides
+- Free Study Guide Download
+  - <https://goo.gl/4umoHX>
+- Juniper Forums
+  - <https://forums.juniper.net/>
+- Community Resources
+  - Mailing Lists
+  - <https://puck.nether.net/mailmen/listinfo/juniper-nsp>
+    - Slack Channel
+      - <https://networktocode.herokuapp.com/>
+    - GNS3
+- Juniper vLabs
+  - <https://jlabs.juniper.net/vlabs/>
+- AWS EC2 Instances
+  - vMX
+    - vSRX
